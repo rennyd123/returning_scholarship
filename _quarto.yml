@@ -1,0 +1,42 @@
+project:
+  type: website
+
+website:
+  #favicon: website/images/5200_logo.png 
+  title: "Returning Student Scholarship Application"
+  navbar:
+    title: false
+    #logo: website/images/5200_logo.png
+    # logo-alt: 
+    left:
+      - href: website/tabs/home/index.qmd
+        text: Home
+      - href: website/tabs/introduction/introduction.ipynb
+        text: Introduction
+      - href: website/tabs/overview/overview.qmd
+        text: Data Overview
+      - href: website/tabs/cottontails/cottontails.qmd
+        text: Cottontails
+      - href: website/tabs/coverage/coverage.ipynb
+        text: Soil Coverage
+      - href: website/tabs/black_bears/bears.ipynb
+        text: Black Bears
+
+
+    page-footer:
+      background: light 
+      left: 
+        - "Copyright 2024"
+
+format:
+  html:
+    smooth-scroll: true
+    theme: 
+        - styles.scss
+    mainfont: Montserrat
+    toc: true
+    link-external-newwindow: true 
+    citations-hover: true
+    footnotes-hover: true
+    plotly:
+      include: true

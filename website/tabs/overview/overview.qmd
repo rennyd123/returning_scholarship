@@ -1,0 +1,247 @@
+---
+jupyter: python3
+code-fold: true
+warning: false 
+embed-resources: true
+include: true
+---
+
+## Temperature Trends
+
+```{python}
+#| code-fold: true
+#| warning: false
+
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import pandas as pd
+import plotly.express as px
+
+app = dash.Dash(__name__)
+
+cleaned_temp_subset = pd.read_csv("../../../data/cleaned_temp_subset.csv")
+cleaned_temp_subset = cleaned_temp_subset.drop(columns="Unnamed: 0")
+
+options = [{'label': col, 'value': col} for col in cleaned_temp_subset.columns if col not in ['year', "frostdays_winter"]]
+
+app.layout = html.Div([
+
+    html.H1("Temperature Data", style={"text-align": "center"}),
+
+    dcc.Dropdown(id="dropdown", 
+                 options=options,
+                 multi=True, 
+                 value=["temp_winter"], 
+                 style={"width": "40%"}), 
+
+    html.Div(id="output_container", children=[]), 
+    html.Br(), 
+
+    dcc.Graph(id="temp_map", figure={})
+])
+
+@app.callback(
+    Output(component_id='output_container', component_property='children'),
+    Output(component_id='temp_map', component_property='figure'),
+    Input(component_id='dropdown', component_property='value')
+)
+def update_graph(selected_options):
+    if not selected_options:
+        return "No data selected", {}
+
+    long_df = cleaned_temp_subset.melt(id_vars=["year"], 
+                                       value_vars=selected_options,
+                                       var_name="Metric", 
+                                       value_name="Value")
+
+    fig = px.line_polar(long_df, r="Value", theta="year", color="Metric",
+                        title="Temperature Data for Selected Metrics",
+                        labels={'Value': 'Average Temperature (ºC)', 'year': 'Year', 'Metric': 'Metrics'},
+                        line_close=False, 
+                        template="ggplot2", 
+                        color_discrete_sequence=px.colors.qualitative.Bold)
+
+    fig.update_layout(
+        polar=dict(
+            angularaxis=dict(
+                type='category',
+                categoryorder='category ascending',
+                tickvals=[str(year) for year in cleaned_temp_subset['year'].unique()],
+                ticktext=[str(year) for year in cleaned_temp_subset['year'].unique()],
+                ticks='outside',
+                ticklen=10,
+                tickfont=dict(size=8),
+                rotation=90  
+            )
+        )
+    )
+
+    container = f"The metrics selected by user: {', '.join(selected_options)}"
+
+    return container, fig
+
+if __name__ == "__main__":
+    app.run_server(port=8051, debug=True, use_reloader=False)
+```
+
+### Coverage Data
+
+```{python}
+#| code-fold: true
+#| warning: false
+import plotly.express as px
+import pandas as pd 
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+coverage_data_agg = pd.read_csv("../../../data/coverage_data_agg.csv")
+coverage_data_agg = coverage_data_agg.drop(columns="Unnamed: 0")
+
+melted_coverage_agg = pd.melt(coverage_data_agg, id_vars="year", value_vars=['pct_treecanopy', 'pct_annual_herbcov', 'pct_bareground',
+       'pct_herbcov', 'pct_plantlittercov', 'pct_shrubcov'])
+
+coverage_data_agg_renamed = coverage_data_agg.rename(columns={
+    "pct_treecanopy": "Tree Canopy Coverage (%)", 
+    'pct_annual_herbcov': "Annual Herbaceous Coverage (%)", 
+    'pct_bareground': "Bare Ground (%)", 
+    "pct_herbcov": "Herbaceous Coverage (%)",
+    "pct_plantlittercov": "Plant Litter Coverage (%)",
+    "pct_shrubcov": "Shrub Coverage (%)"
+})
+
+coverage_data_long = coverage_data_agg_renamed.melt(id_vars=["year"], var_name="Coverage Type", value_name="Percentage")
+
+sns.scatterplot(data=coverage_data_long, x="year", y="Percentage", hue="Coverage Type", palette="colorblind", s=100)
+
+for coverage_type in coverage_data_long["Coverage Type"].unique():
+    subset = coverage_data_long[coverage_data_long["Coverage Type"] == coverage_type]
+    sns.regplot(data=subset, x="year", y="Percentage", scatter=False, ci=None, label=coverage_type)
+
+plt.title("Coverage Data Trends")
+
+plt.xlabel("Year")
+plt.ylabel("Percentage")
+
+plt.legend(title="Coverage Type", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+plt.show()
+
+# fig = px.scatter(coverage_data_long, x="year", y="Percentage", color="Coverage Type", title="Coverage Data Trends", color_discrete_sequence=px.colors.qualitative.Bold
+# , trendline = "ols", template = "ggplot2")
+
+# fig.show()
+```
+
+## Rain Data
+
+```{python}
+#| code-fold: true
+#| warning: false
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import pandas as pd
+import plotly.express as px
+
+app = dash.Dash(__name__)
+
+rain_data_reg = pd.read_csv("../../../data/rain_data_reg.csv")
+
+options = [{'label': col, 'value': col} for col in rain_data_reg.columns if col not in ['year', 'latitude', 'longitude', "Unnamed: 0"]]
+
+app.layout = html.Div([
+
+    html.H1("Rain Data", style={"text-align": "center"}),
+
+    dcc.Dropdown(id="dropdown", 
+                 options=options,
+                 multi=True, 
+                 value=["precipitation_winter"], 
+                 style={"width": "40%"}), 
+
+    html.Div(id="output_container", children=[]), 
+    html.Br(), 
+
+    dcc.Graph(id="rain_map", figure={})
+])
+
+@app.callback(
+    Output(component_id='output_container', component_property='children'),
+    Output(component_id='rain_map', component_property='figure'),
+    Input(component_id='dropdown', component_property='value')
+)
+def update_graph(selected_options):
+    if not selected_options:
+        return "No data selected", {}
+
+    long_df = rain_data_reg.melt(id_vars=["year", "latitude", "longitude"], 
+                                 value_vars=selected_options,
+                                 var_name="Metric", 
+                                 value_name="Value")
+    
+    vmin = long_df["Value"].min()
+    vmax = long_df["Value"].max()
+
+    fig = px.scatter_geo(long_df, 
+                         lat='latitude', 
+                         lon='longitude', 
+                         color='Value',
+                         animation_frame='year',
+                         animation_group = "Metric", 
+                         scope='usa', 
+                         title='Rain Data Over Time',
+                         facet_col='Metric',
+                         height=600,
+                         range_color=[vmin, vmax], 
+                         template = "ggplot2")
+    
+    fig.update_geos(
+        center={"lat": 37.5, "lon": -110},  
+        projection_scale=30  
+    )
+
+    fig.update_layout(coloraxis_colorbar=dict(
+        title="Water (mm)"  
+    ))
+
+
+    container = f"The metrics selected by user: {', '.join(selected_options)}"
+
+    return container, fig
+
+if __name__ == "__main__":
+    app.run_server(host='0.0.0.0', port=8051)
+```
+
+## Soil Data
+
+```{python}
+#| code-fold: true
+#| warning: false
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+soil_data_agg = pd.read_csv("../../../data/soil_data.csv")
+soil_data_agg = soil_data_agg.drop(columns = "Unnamed: 0")
+soil_data_agg = soil_data_agg.rename(columns = {
+    'year': 'Year',
+    'drysoildays_summer': "Dry Soil Days (Summer)", 
+    'evap_summer': "Evaporation (Summer)", 
+    'xtr_st_drysoilstress_summer': "Extreme Short Term Dry Soil Sress Days (Summer)", 
+    'frostdays_winter': "Frost Days (Winter)",
+    'nondry_swa_summer': "Non-Dry Soil Water Availability (Summer)"
+})
+
+soil_data_melted = pd.melt(soil_data_agg, id_vars=["Year"], var_name = "Variable", value_name = "Value")
+soil_data_melted['Value'] = soil_data_melted['Value'].round(2)
+
+sns.lmplot(x="Year", y="Value", hue="Variable", data=soil_data_melted, palette="bright",
+           scatter_kws={"s": 50, "alpha": 0.7}, legend_out=True, aspect=1)
+plt.title("Soil Data Over Time")
+plt.xlabel("Year")
+plt.ylabel("Value")
+```
+

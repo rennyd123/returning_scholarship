@@ -1,0 +1,141 @@
+---
+jupyter: python3
+code-fold: true
+warning: false 
+embed-resources: true
+include: true
+---
+
+### Cottontails
+
+<img src="../../images/cottontail.jpg" width="50%" height="50%" align="right" style="margin-left: 15px;">
+
+Cottontails are among the few of the animals found to the Four Corners Region. Cottontails are caring by nature, with mothers often having between three to eight babies in each litter, and having three to four litters per year. With potentially up to twenty-four babies to care for, the last thing Cottontails need to worry about is their environment and whether or not their environment will provide for them. 
+
+Cottontails prefer dry, well-drained soils, but not extremely dry, abudantly low vegetation, low to moderate rainfall, and are adaptable to all temperatures. As climate change brings more dramatic rains and extremely dry soil, the cottontail's preferred habitat is threatened. 
+
+As climate change continues to threaten, cottontails like Martha, pictured to the right, struggle to raise and provide for their babies. 
+
+### Extremely Dry Soil
+
+Below is a correlation matrix to show what is causing the soil to be as dry as it is. The increased temperatures that are brought by climate change are the main cause. 
+
+```{python}
+#| code-fold: true
+#| warning: false
+#| fig-cap: Figure 1, A correlation matrix showing the correlation between each variable and extreme short term dry soil in the summer. 
+import seaborn as sns 
+import plotly.express as px
+import pandas as pd 
+
+hist_data_agg = pd.read_csv("../../../data/NABR_historic.csv")
+data_colmap = {
+    "long" : "longitude",
+    "lat" : "latitude",
+    "TimePeriod" : "time_period",
+    "RCP" : "rep_con_path",
+    "treecanopy" : "pct_treecanopy", 
+    "Ann_Herb" : "pct_annual_herbcov",
+    "Bare" : "pct_bareground",
+    "Herb" : "pct_herbcov",
+    "Litter" : "pct_plantlittercov",
+    "Shrub" : "pct_shrubcov",
+    "DrySoilDays_Summer_whole" : "drysoildays_summer",
+    "Evap_Summer" : "evap_summer", 
+    "ExtremeShortTermDryStress_Summer_whole" : "xtr_st_drysoilstress_summer", 
+    "FrostDays_Winter" : "frostdays_winter", 
+    "NonDrySWA_Summer_whole" : "nondry_swa_summer",
+    "PPT_Winter" : "precipitation_winter", 
+    "PPT_Summer" : "precipitation_summer",
+    "PPT_Annual" : "precipitation_annual", 
+    "T_Winter" : "temp_winter",
+    "T_Summer" : "temp_summer", 
+    "T_Annual" : "temp_annual", 
+    "Tmax_Summer" : "maxtemp_summer", 
+    "Tmin_Winter" : "mintemp_winter", 
+    "VWC_Winter_whole" : "volwater_winter", 
+    "VWC_Spring_whole" : "volwater_spring", 
+    "VWC_Summer_whole" : "volwater_summer", 
+    "VWC_Fall_whole" : "volwater_fall"
+}
+hist_data_agg = hist_data_agg.rename(columns = data_colmap)
+
+cols_to_drop = ['longitude', 'latitude', 'time_period' ,'scenario', 'rep_con_path']
+hist_data_agg = hist_data_agg.drop(columns=cols_to_drop)
+
+hist_data_agg = hist_data_agg.groupby("year")[['pct_treecanopy', 'pct_annual_herbcov', 'pct_bareground',
+       'pct_herbcov', 'pct_plantlittercov', 'pct_shrubcov',
+       'drysoildays_summer', 'evap_summer', 'xtr_st_drysoilstress_summer',
+       'frostdays_winter', 'nondry_swa_summer', 'precipitation_winter',
+       'precipitation_summer', 'precipitation_annual', 'temp_winter',
+       'temp_summer', 'temp_annual', 'maxtemp_summer', 'mintemp_winter',
+       'volwater_winter', 'volwater_spring']].agg("mean").reset_index()
+
+#px.scatter(hist_data_agg, x = "pct_bareground", y = ["temp_summer", 'temp_annual', 'maxtemp_summer'], trendline = "ols", template = 'ggplot2')
+hist_data_agg_ny = hist_data_agg.drop(columns = "year")
+correlation_matrix = hist_data_agg_ny.corr()
+dry_soil_corr = correlation_matrix['xtr_st_drysoilstress_summer']
+dry_soil_corr_sorted = dry_soil_corr.sort_values(ascending=False)
+
+import plotly.graph_objects as go
+
+fig = go.Figure(data=go.Heatmap(
+    z=correlation_matrix.values,
+    x=correlation_matrix.columns,
+    y=correlation_matrix.columns,
+    colorscale='Reds',
+    zmid=0
+))
+
+fig.update_layout(
+    title='Correlation Matrix Heatmap',
+    xaxis_nticks=36, 
+    template = 'ggplot2'
+)
+
+fig.show()
+```
+
+While dry soil allows for Martha to burrow and nest with her babies in a structure that won't collapse, extremely dry soil often means low vegetation, and leaves her and her children more visible to predators. 
+
+```{python}
+# px.scatter(hist_data_agg, x = "maxtemp_summer", y = 'xtr_st_drysoilstress_summer', trendline = "ols", template = "ggplot2", title = "Extreme Dry Soil Stress vs Max Temp in Summer")
+```
+
+```{python}
+#| code-fold: true
+#| warning: false
+import matplotlib as plt
+g = sns.pairplot(hist_data_agg, vars=['evap_summer', 'temp_summer', 'precipitation_summer', 'xtr_st_drysoilstress_summer'])
+
+for ax in g.axes.flatten():
+    if ax.get_xlabel() in ['evap_summer', 'temp_summer', 'precipitation_summer', 'drysoildays_summer'] and ax.get_ylabel() in ['evap_summer', 'temp_summer', 'precipitation_summer', 'drysoildays_summer']:
+        sns.regplot(
+            x=ax.get_xlabel(), 
+            y=ax.get_ylabel(), 
+            data=hist_data_agg, 
+            ax=ax, 
+            scatter=False
+        )
+
+g
+```
+
+```{python}
+#| code-fold: true
+#| warning: false
+g = sns.pairplot(hist_data_agg, vars=['evap_summer', 'temp_summer', 'precipitation_summer', 'drysoildays_summer'])
+g
+```
+
+```{python}
+#| code-fold: true
+#| warning: false
+hist_data_melted = pd.melt(hist_data_agg, id_vars = "year", var_name="Variable", value_name="Value")
+```
+
+The increase in summer temperature causes the soil to be especially dry, harming 
+
+### Abundant Low Vegetation and Coverage 
+
+
